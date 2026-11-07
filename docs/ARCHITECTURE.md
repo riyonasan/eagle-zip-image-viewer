@@ -7,12 +7,14 @@
 - lib/video-name.cjs: 元の末尾ファイル名を保ち、Windows禁止文字・予約名・過長名だけを安全化する。拡張子は動画の許可リストに限定する。
 - lib/retry.cjs: 読み出し・生成のエラーを初回＋最大3回まで再試行する。待機は中止可能で、外部起動には適用しない。
 - viewer.js: Eagleのpathクエリを受け、ブラウザ内Blob URLで画像や動画の静止画を表示。処理を直列化して連打の古い要求を破棄し、ページ切替・終了時にURLと未起動の一時動画を解放する。
-- 初期フォーカス: 文書開始時の一度だけwindow/stageに要求する。非表示・prerender・選択済みコントロールは尊重し、読み込み完了後やページ変更時に取り直さない。Eagleが要求を受けるかはホスト側の挙動に依存する。
+- lib/focus.cjs: 初期フォーカスを最初のonPluginRun通知後の描画へ遅らせる。フックがなければwindow load後に一度だけ要求する。開始から1.5秒で期限切れ、入力・focusin・blur・非表示・終了で中止する。非表示・prerender・選択済みコントロールを尊重し、読み込み完了・ページ変更・再通知で取り直さない。stageはTab移動可能にし、クリックや自動フォーカスでは枠線を出さずTab操作時だけ表示する。
 - lib/immersive.cjs: ホストの全画面状態を読み、CSSクラスだけを切り替える。F5やウィンドウ操作は行わず、API不明時は通常表示を維持。resize等で再判定し、古い非同期応答を無視する。
 - thumbnail.cjs: 先頭画像、なければ先頭動画の静止画をDOM canvasで最大400pxのPNGへ変換しdestへ保存。依存がなければ展開前に汎用アイコンへ切り替える。
 - tests: 実データを使わない合成ZIP、ブラウザを起動しないDOM模擬試験、明示された信頼済みFFmpegを使う任意の合成動画試験。
 
 同梱JS依存はyauzl、image-size、iconv-lite。各ライセンスは同梱node_modules内に保持。FFmpegバイナリは同梱せず、Eagle公式依存から渡されたローカルの絶対パスのみ使用する。共通の展開処理を二重実装せず、ZIP64などの構造解析はyauzlへ委譲する。CRC32は展開後の整合性とUnicode名のextra field検証に使う。
+
+Eagle 4.0.0のFormat Extensionホストを読み取り確認したところ、Electron webviewを使い、dom-ready後に初期化情報を渡し、さらに100ms後にplugin-runを送っている。0.5.0の同期focusはそれより前なので、0.5.1は利用可能な準備完了通知を待つ。ただし[Format ExtensionでのPlugin APIは保証されない](https://developer.eagle.cool/plugin-api/get-started/plugin-types/preview)。[onPluginRun](https://developer.eagle.cool/plugin-api/ja-jp/api/event)の提供や[guest webviewへのフォーカス](https://www.electronjs.org/docs/latest/api/webview-tag/)はホスト依存で、DOM模擬試験は実ホストでのキー配送の証明にはならない。Eagleのnative window.focus、親DOM書き換え、反復タイマーによる強制フォーカスは行わない。外側での操作はすべて観測できないため、待機は上限付きである。
 
 全画像のメモリ読み込みやディスクキャッシュを行わず、一覧用の名前と読み出しに必要な数値フィールド、1ページだけを保持する。ZIP中央ディレクトリの元Buffer・コメント・extraは保持せず、走査するメタデータ合計にも8 MiBの上限を設ける。画像デコーダー自体はEagleの実装なので、画素数・圧縮サイズの上限はあるがプロセスの厳密な最大メモリを保証しない。
 

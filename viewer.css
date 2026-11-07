@@ -10,7 +10,8 @@ button:focus-visible, select:focus-visible { outline: 2px solid #b0cdfb; outline
 #counter { min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
 #pages { flex: 1; min-width: 100px; max-width: 460px; }
 #stage { position: relative; overflow: auto; min-height: 0; text-align: center; }
-#stage:focus-visible { outline: 2px solid #b0cdfb; outline-offset: -2px; }
+#stage:focus { outline: none; }
+.keyboard-focus #stage:focus-visible { outline: 2px solid #b0cdfb; outline-offset: -2px; }
 #page { display: block; margin: 0 auto; }
 #page[hidden] { display: none; }
 #stage[data-fit="contain"] #page { width: 100%; height: 100%; object-fit: contain; }

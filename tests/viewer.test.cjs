@@ -6,7 +6,12 @@ const vm = require('node:vm');
 
 class Element {
   constructor(tagName = 'DIV') { this.tagName = tagName; this.events = {}; this.dataset = {}; this.children = []; this.value = ''; }
-  addEventListener(type, fn) { this.events[type] = fn; }
+  addEventListener(type, fn) {
+    this.listeners ||= {};
+    (this.listeners[type] ||= new Set()).add(fn);
+    this.events[type] = event => Promise.all([...this.listeners[type]].map(callback => callback(event || {})));
+  }
+  removeEventListener(type, fn) { this.listeners?.[type]?.delete(fn); }
   replaceChildren(...children) { this.children = children.flatMap(c => c.tagName === 'FRAGMENT' ? c.children : [c]); }
   appendChild(child) { this.children.push(child); }
   removeAttribute(name) { delete this[name]; }
@@ -20,8 +25,13 @@ function harness(options = {}) {
   document.body=new Element('BODY');document.documentElement=new Element('HTML');
   document.activeElement=options.activeControl?elements.pages:document.body;
   document.visibilityState=options.hidden?'hidden':'visible';
+  document.readyState='loading';
   Object.assign(document, { getElementById: id => elements[id], createElement: tag => new Element(tag.toUpperCase()), createDocumentFragment: () => new Element('FRAGMENT') });
   const window = new Element(); window.location = { search: '?path=C%3A%5Csynthetic.zip' };
+  window.setTimeout=setTimeout;window.clearTimeout=clearTimeout;
+  const frames=new Set();
+  window.requestAnimationFrame=fn=>{frames.add(fn);queueMicrotask(()=>{if(frames.delete(fn))fn();});return fn;};
+  window.cancelAnimationFrame=fn=>frames.delete(fn);
   const focus={window:0,stage:0,options:null};
   window.focus=()=>{focus.window++;if(options.focusError)throw Error('focus restricted');};
   elements.stage.focus=opts=>{focus.stage++;focus.options=opts;document.activeElement=elements.stage;};
@@ -32,6 +42,7 @@ function harness(options = {}) {
     Image: class extends Element { set src(value) { if (value) queueMicrotask(() => options.decodeError ? this.onerror?.() : this.onload?.()); } },
     require: name => {
       if (name === './lib/immersive.cjs') return { observeFullscreen: () => () => {} };
+      if (name === './lib/focus.cjs') return require('../lib/focus.cjs');
       if (name === './lib/retry.cjs') return { retry:(work,opts)=>require('../lib/retry.cjs').retry(work,{...opts,delays:options.retryDelays || [0,0,0]}) };
       if (name === './lib/video.cjs') return { prepareVideo: options.prepareVideo || (async () => { throw Error('unexpected video'); }) };
       assert.equal(name, './lib/archive.cjs');
@@ -46,6 +57,7 @@ function harness(options = {}) {
     }
   });
   vm.runInContext(fs.readFileSync(require.resolve('../viewer.js'), 'utf8'), context);
+  document.readyState='complete';window.fire('load');
   return { elements, document, window, handles, reads, urls, revoked, context, focus,
     settled: () => vm.runInContext('queue', context) };
 }
@@ -195,14 +207,14 @@ test('normal interface has no explanatory caption or shortcut legend',()=>{
   assert.match(html,/id="filename"/);assert.match(html,/外部プレイヤーで開く/);
 });
 
-test('startup focuses the viewer once so arrows work without an image click',async()=>{
-  const h=harness();assert.equal(h.focus.window,1);assert.equal(h.focus.stage,1);assert.equal(h.focus.options.preventScroll,true);
-  await h.settled();let prevented=0;
+test('loaded viewer requests focus once so arrows work without an image click',async()=>{
+  const h=harness();assert.equal(h.focus.stage,0);
+  await h.settled();assert.equal(h.focus.window,1);assert.equal(h.focus.stage,1);assert.equal(h.focus.options.preventScroll,true);let prevented=0;
   h.document.fire('keydown',{key:'ArrowRight',target:h.document.activeElement,preventDefault:()=>prevented++});await h.settled();
   assert.equal(h.elements.counter.textContent,'2 / 3');assert.equal(prevented,1);
   h.elements.reload.fire('click');await h.settled();assert.equal(h.focus.stage,1);assert.equal(h.focus.window,1);
   h.window.fire('beforeunload');
-  assert.match(fs.readFileSync(require.resolve('../index.html'),'utf8'),/id="stage"[^>]*tabindex="-1"/);
+  assert.match(fs.readFileSync(require.resolve('../index.html'),'utf8'),/id="stage"[^>]*tabindex="0"/);
 });
 
 test('startup does not steal focus from controls or a hidden view, and host refusal is harmless',async()=>{

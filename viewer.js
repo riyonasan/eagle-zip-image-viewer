@@ -4,6 +4,7 @@ const { openArchive } = require('./lib/archive.cjs');
 const { observeFullscreen } = require('./lib/immersive.cjs');
 const { prepareVideo } = require('./lib/video.cjs');
 const { retry } = require('./lib/retry.cjs');
+const { focusOnOpen } = require('./lib/focus.cjs');
 const stopObservingFullscreen = observeFullscreen(window, document);
 const ui = Object.fromEntries(['previous', 'next', 'counter', 'pages', 'fit', 'encoding', 'reload', 'stage', 'page', 'status', 'filename', 'video-card', 'video-open', 'video-note'].map(id => [id, document.getElementById(id)]));
 const source = new URLSearchParams(window.location.search).get('path');
@@ -191,12 +192,6 @@ document.addEventListener('keydown', event => {
   }[event.key];
   if (action) { event.preventDefault(); action(); }
 });
-window.addEventListener('beforeunload', () => { disposed = true; ticket++; loadAbort?.abort(); stopObservingFullscreen(); archive?.close(); releaseImage(); });
-// Request focus only at document startup, not after slow decoding/retries or on
-// every page change. Never take focus back from a control the user has selected.
-if (document.visibilityState !== 'hidden' && !document.prerendering &&
-    (!document.activeElement || [document.body, document.documentElement].includes(document.activeElement))) {
-  try { window.focus?.(); } catch { /* The host may restrict guest focus. */ }
-  try { ui.stage.focus?.({ preventScroll: true }); } catch { /* Remain usable by clicking. */ }
-}
+const stopInitialFocus = focusOnOpen(window, document, ui.stage);
+window.addEventListener('beforeunload', () => { disposed = true; ticket++; loadAbort?.abort(); stopInitialFocus(); stopObservingFullscreen(); archive?.close(); releaseImage(); });
 reload();
