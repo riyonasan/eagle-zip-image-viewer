@@ -1,0 +1,18 @@
+{
+  "id": "fanbox-zip-image-viewer",
+  "version": "0.5.0",
+  "platform": "all",
+  "arch": "all",
+  "name": "ZIP Image Viewer",
+  "description": "ZIP内の画像と動画サムネイルをEagle内で閲覧する",
+  "logo": "/logo.png",
+  "keywords": ["zip", "cbz", "images"],
+  "dependencies": ["ffmpeg"],
+  "devTools": false,
+  "preview": {
+    "zip,cbz": {
+      "thumbnail": { "path": "thumbnail.cjs", "size": 400, "allowZoom": false },
+      "viewer": { "path": "index.html" }
+    }
+  }
+}

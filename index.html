@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ZIP Image Viewer</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <div class="edge-panel edge-top">
+  <header>
+    <button id="previous" title="前のページ（←）" disabled>‹</button>
+    <span id="counter">0 / 0</span>
+    <button id="next" title="次のページ（→・Space）" disabled>›</button>
+    <select id="pages" aria-label="ページ一覧" disabled></select>
+    <select id="fit" aria-label="表示サイズ"><option value="contain">画面に合わせる</option><option value="width">幅に合わせる</option><option value="actual">原寸</option></select>
+    <select id="encoding" aria-label="ファイル名の文字コード"><option value="auto">文字コード: 自動</option><option value="shift_jis">Shift_JIS</option><option value="cp437">CP437</option></select>
+    <button id="reload" title="ZIPを読み直す">↻</button>
+  </header>
+  </div>
+  <main id="stage" data-fit="contain" tabindex="-1" aria-label="ZIPビューアー">
+    <img id="page" alt="" hidden>
+    <p id="status" role="status" aria-live="polite">ZIPを開いています…</p>
+    <div id="video-card" hidden>
+      <button id="video-open" disabled>▶ 外部プレイヤーで開く</button>
+      <p id="video-note" role="status" aria-live="polite"></p>
+    </div>
+  </main>
+  <div class="edge-panel edge-bottom">
+  <footer tabindex="0" aria-label="ページのファイル名"><span id="filename"></span></footer>
+  </div>
+  <script src="viewer.js"></script>
+</body>
+</html>
